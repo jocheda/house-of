@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+# Products
+  db-products:
+    container_name: postgres-product
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: products
+    volumes:
+      - ./data/pgdata_product:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    depends_on:
+      - redis
+    networks:
+      - net-app
+
+  app-products:
+    container_name: nest-products
+    build:
+      context: ./products
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db-products
+    volumes:
+      - ./products/src:/app/src
+    networks:
+      - net-app
+
+  redis:
+    container_name: redis
+    image: redis:6.0-alpine
+    restart: always
+    environment:
+      REDIS_PASSWORD: redis
+      REDIS_PORT: 6379
+    ports:
+      - '6379:6379'
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - net-app
+
+  redisinsight:
+    container_name: redisinsight
+    image: redislabs/redisinsight:latest
+    restart: always
+    ports:
+      - '8001:8001'
+    depends_on:
+      - redis
+    networks:
+      - net-app
+  
+
+# Carts
+  db-carts:
+    container_name: postgres-carts
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: carts
+    volumes:
+      - ./data/pgdata_carts:/var/lib/postgresql/data
+    ports:
+      - '5433:5432'
+    networks:
+      - net-app
+
+  app-carts:
+    container_name: nest-carts
+    build:
+      context: ./carts
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - '3001:3000'
+    depends_on:
+      - db-carts
+    volumes:
+      - ./carts/src:/app/src
+    networks:
+      - net-app
+
+# pgAdmin
+  pgadmin:
+    container_name: pgadmin4
+    image: elestio/pgadmin:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@houseof.io
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 8080
+    ports:
+      - '5050:8080'
+    depends_on:
+      - db-products
+      - db-carts
+    networks:
+      - net-app
+
+networks:
+  net-app:
+    driver: bridge
